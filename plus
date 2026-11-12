@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Tsubasa Tashiro
 import sys
 #本来は関数の前後に空行を2行あける（スライドの都合で省略）
