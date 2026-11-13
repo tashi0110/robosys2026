@@ -1,71 +1,128 @@
 #!/usr/bin/env python3
+
 import calendar
+import sys
 from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-WEEKDAYS = ["月曜日", "火曜日", "水曜日", "木曜日",
-            "金曜日", "土曜日", "日曜日"]
+WEEKDAYS = {
+    "月": 0, "月曜": 0, "月曜日": 0,
+    "火": 1, "火曜": 1, "火曜日": 1,
+    "水": 2, "水曜": 2, "水曜日": 2,
+    "木": 3, "木曜": 3, "木曜日": 3,
+    "金": 4, "金曜": 4, "金曜日": 4,
+    "土": 5, "土曜": 5, "土曜日": 5,
+    "日": 6, "日曜": 6, "日曜日": 6,
+}
 
 
-def get_number(prompt, minimum, maximum=None):
-    while True:
-        try:
-            value = Decimal(input(prompt))
-            if not value.is_finite():
-                raise ValueError
-            if value < minimum or (maximum is not None and value > maximum):
-                print("入力できる範囲を確認してください。")
-                continue
-            return value
-        except (ValueError, InvalidOperation):
-            print("数字で入力してください。")
+def error(message):
+    print(f"shiftcalc: {message}", file=sys.stderr)
+    return 2
+
+
+def decimal_text(value):
+    return format(value.normalize(), "f")
 
 
 def main():
-    print("=== 月収計算 shiftcalc ===")
+    records = []
 
-    year = int(get_number("年：", 1, 9999))
-    month = int(get_number("月：", 1, 12))
-    hourly = get_number("時給（円）：", Decimal("1"))
+    for line_number, raw_line in enumerate(sys.stdin, start=1):
+        line = raw_line.split("#", 1)[0].strip()
+        if line:
+            records.append((line_number, line))
 
-    hours = []
-    for weekday in WEEKDAYS:
-        value = get_number(
-            f"{weekday}の勤務時間（休みなら0）：",
-            Decimal("0"), Decimal("24")
+    if not records:
+        return error("入力データがありません。")
+
+    line_number, first_line = records[0]
+    first = first_line.split()
+
+    if len(first) != 3:
+        return error(
+            f"{line_number}行目: 年 月 時給 の順に入力してください。"
         )
-        hours.append(value)
 
-    counts = [0] * 7
-    _, days = calendar.monthrange(year, month)
+    try:
+        year = int(first[0])
+        month = int(first[1])
+        hourly = Decimal(first[2])
+    except (ValueError, InvalidOperation):
+        return error(f"{line_number}行目: 年・月・時給を確認してください。")
 
-    for day in range(1, days + 1):
+    if not 1 <= year <= 9999:
+        return error("年は1〜9999で指定してください。")
+
+    if not 1 <= month <= 12:
+        return error("月は1〜12で指定してください。")
+
+    if not hourly.is_finite() or hourly <= 0:
+        return error("時給は0より大きい数値にしてください。")
+
+    hours = [Decimal("0")] * 7
+    registered = set()
+
+    for line_number, line in records[1:]:
+        fields = line.split()
+
+        if len(fields) != 2:
+            return error(
+                f"{line_number}行目: 曜日 勤務時間 の順に入力してください。"
+            )
+
+        weekday_name, hour_text = fields
+
+        if weekday_name not in WEEKDAYS:
+            return error(f"{line_number}行目: 曜日が正しくありません。")
+
+        weekday = WEEKDAYS[weekday_name]
+
+        if weekday in registered:
+            return error(f"{line_number}行目: 同じ曜日が重複しています。")
+
+        try:
+            work_hours = Decimal(hour_text)
+        except InvalidOperation:
+            return error(f"{line_number}行目: 勤務時間は数値で入力してください。")
+
+        if not work_hours.is_finite() or not Decimal("0") <= work_hours <= Decimal("24"):
+            return error(f"{line_number}行目: 勤務時間は0〜24で指定してください。")
+
+        hours[weekday] = work_hours
+        registered.add(weekday)
+
+    day_counts = [0] * 7
+    _, days_in_month = calendar.monthrange(year, month)
+
+    for day in range(1, days_in_month + 1):
         weekday = date(year, month, day).weekday()
-        counts[weekday] += 1
+        day_counts[weekday] += 1
 
-    print(f"\n=== {year}年{month}月の給与計算 ===")
+    total_hours = sum(
+        (hours[i] * day_counts[i] for i in range(7)),
+        Decimal("0")
+    )
 
-    total_hours = Decimal("0")
-
-    for i in range(7):
-        worked = hours[i] * counts[i]
-        total_hours += worked
-        print(
-            f"{WEEKDAYS[i]}：{counts[i]}回 × "
-            f"{hours[i]}時間 = {worked}時間"
-        )
+    workdays = sum(
+        day_counts[i] for i in range(7) if hours[i] > 0
+    )
 
     wage = (total_hours * hourly).quantize(
         Decimal("1"), rounding=ROUND_HALF_UP
     )
 
-    print("----------------------------")
-    print(f"出勤日数：{sum(counts[i] for i in range(7) if hours[i] > 0)}日")
-    print(f"合計勤務時間：{total_hours}時間")
-    print(f"時給：{hourly}円")
-    print(f"予想月収：{wage:,}円")
+    # 標準出力にはCSV形式の計算結果だけを出力する
+    print("month,workdays,total_hours,wage_yen")
+    print(
+        f"{year:04d}-{month:02d},"
+        f"{workdays},"
+        f"{decimal_text(total_hours)},"
+        f"{wage}"
+    )
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
-
+    sys.exit(main())
