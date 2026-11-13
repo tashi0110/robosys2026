@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Tsubasa Tashiro
 set -euo pipefail
 
 actual=$(cat <<'EOF' | ./shiftcalc

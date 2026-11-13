@@ -1,5 +1,5 @@
 # robosys2026
-# SPDX-FileCopyrightText: 2026 Tsubasa Tashiro
+<!-- SPDX-FileCopyrightText: 2026 Tsubasa Tashiro -->
 ロボットシステム学の課題で作成したコマンド
 ## Commands
 
