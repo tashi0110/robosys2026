@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+import calendar
+from datetime import date
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+WEEKDAYS = ["月曜日", "火曜日", "水曜日", "木曜日",
+            "金曜日", "土曜日", "日曜日"]
+
+
+def get_number(prompt, minimum, maximum=None):
+    while True:
+        try:
+            value = Decimal(input(prompt))
+            if not value.is_finite():
+                raise ValueError
+            if value < minimum or (maximum is not None and value > maximum):
+                print("入力できる範囲を確認してください。")
+                continue
+            return value
+        except (ValueError, InvalidOperation):
+            print("数字で入力してください。")
+
+
+def main():
+    print("=== 月収計算 shiftcalc ===")
+
+    year = int(get_number("年：", 1, 9999))
+    month = int(get_number("月：", 1, 12))
+    hourly = get_number("時給（円）：", Decimal("1"))
+
+    hours = []
+    for weekday in WEEKDAYS:
+        value = get_number(
+            f"{weekday}の勤務時間（休みなら0）：",
+            Decimal("0"), Decimal("24")
+        )
+        hours.append(value)
+
+    counts = [0] * 7
+    _, days = calendar.monthrange(year, month)
+
+    for day in range(1, days + 1):
+        weekday = date(year, month, day).weekday()
+        counts[weekday] += 1
+
+    print(f"\n=== {year}年{month}月の給与計算 ===")
+
+    total_hours = Decimal("0")
+
+    for i in range(7):
+        worked = hours[i] * counts[i]
+        total_hours += worked
+        print(
+            f"{WEEKDAYS[i]}：{counts[i]}回 × "
+            f"{hours[i]}時間 = {worked}時間"
+        )
+
+    wage = (total_hours * hourly).quantize(
+        Decimal("1"), rounding=ROUND_HALF_UP
+    )
+
+    print("----------------------------")
+    print(f"出勤日数：{sum(counts[i] for i in range(7) if hours[i] > 0)}日")
+    print(f"合計勤務時間：{total_hours}時間")
+    print(f"時給：{hourly}円")
+    print(f"予想月収：{wage:,}円")
+
+
+if __name__ == "__main__":
+    main()
+
