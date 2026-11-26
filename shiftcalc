@@ -27,30 +27,15 @@ def decimal_text(value):
 
 
 def main():
-    records = []
-
-    for line_number, raw_line in enumerate(sys.stdin, start=1):
-        line = raw_line.split("#", 1)[0].strip()
-        if line:
-            records.append((line_number, line))
-
-    if not records:
-        return error("入力データがありません。")
-
-    line_number, first_line = records[0]
-    first = first_line.split()
-
-    if len(first) != 3:
-        return error(
-            f"{line_number}行目: 年 月 時給 の順に入力してください。"
-        )
+    if len(sys.argv) != 4:
+        return error("使い方: ./shiftcalc 年 月 時給")
 
     try:
-        year = int(first[0])
-        month = int(first[1])
-        hourly = Decimal(first[2])
+        year = int(sys.argv[1])
+        month = int(sys.argv[2])
+        hourly = Decimal(sys.argv[3])
     except (ValueError, InvalidOperation):
-        return error(f"{line_number}行目: 年・月・時給を確認してください。")
+        return error("年・月・時給を確認してください。")
 
     if not 1 <= year <= 9999:
         return error("年は1〜9999で指定してください。")
@@ -61,10 +46,19 @@ def main():
     if not hourly.is_finite() or hourly <= 0:
         return error("時給は0より大きい数値にしてください。")
 
+    records = []
+
+    for line_number, raw_line in enumerate(sys.stdin, start=1):
+        line = raw_line.split("#", 1)[0].strip()
+        if line:
+            records.append((line_number, line))
+
+    if not records:
+        return error("曜日ごとの勤務時間が入力されていません。")
+
     hours = [Decimal("0")] * 7
     registered = set()
-
-    for line_number, line in records[1:]:
+    for line_number, line in records:
         fields = line.split()
 
         if len(fields) != 2:
