@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 set -euo pipefail
 
-actual=$(cat <<'EOF' | ./shiftcalc
-2026 11 1200
+actual=$(cat <<'EOF' | ./shiftcalc 2026 11 1200
 月曜日 5
 水曜日 4
 金曜日 6
@@ -31,7 +30,7 @@ tmp_out=$(mktemp)
 tmp_err=$(mktemp)
 trap 'rm -f "$tmp_out" "$tmp_err"' EXIT
 
-if printf '2026 13 1200\n' | ./shiftcalc >"$tmp_out" 2>"$tmp_err"; then
+if ./shiftcalc 2026 13 1200 </dev/null >"$tmp_out" 2>"$tmp_err"; then
     echo "エラーテスト失敗: 不正な月を受け付けました" >&2
     exit 1
 fi
